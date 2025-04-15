@@ -1,6 +1,5 @@
 import os
 import json
-import time
 from datetime import datetime
 
 import pandas as pd
@@ -11,6 +10,9 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 # access google service account credentials saved in the environment
 # GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
@@ -37,16 +39,22 @@ def authenticate_google_api():
 
 
 def scroll_to_load_posts(driver):
-    # Scroll to load more posts
+    wait = WebDriverWait(driver, 5)
     last_height = driver.execute_script("return document.body.scrollHeight")
     while True:
         driver.execute_script(
             "window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(3)  # Wait longer for posts to load
-        new_height = driver.execute_script("return document.body.scrollHeight")
-        if new_height == last_height:
-            break  # Stop if no new posts are loaded
-        last_height = new_height
+
+        try:
+            wait.until(
+                lambda d: d.execute_script(
+                    "return document.body.scrollHeight") > last_height
+            )
+        except TimeoutException:
+            break  # No more content is loading
+
+        last_height = driver.execute_script(
+            "return document.body.scrollHeight")
 
 
 def reformat_publish_time(publish_time):
@@ -181,7 +189,17 @@ try:
     # Step 1: Open the public Bluesky page
     print("Opening Bluesky page...")
     driver.get("https://bsky.app/profile/london.gov.uk")
-    time.sleep(3)  # Allow time for the page to load
+
+    try:
+        # Wait until the feed is present
+        wait = WebDriverWait(driver, 10)
+        wait.until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "div[data-testid='postsFeed-flatlist']"))
+        )
+        print("Feed loaded successfully!")
+    except TimeoutException:
+        print("Timed out waiting for the post feed to load.")
 
     # Step 2: Scroll to load all posts
     print("Scrolling to load posts...")
@@ -213,6 +231,9 @@ try:
     # Update with your JSON key path
     sheet_name = "Bluesky"  # Replace with your Google Sheet name
     append_to_google_sheet(df, sheet_name)
+
+except Exception as e:
+    print(f"An error occurred during scraping: {e}")
 
 finally:
     driver.quit()
