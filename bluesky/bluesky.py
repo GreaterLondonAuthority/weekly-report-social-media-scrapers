@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime
+import logging
 
 import pandas as pd
 import gspread
@@ -14,15 +15,21 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
+
 # access google service account credentials saved in the environment
 GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
-# name of the google sheet to be updated
-SHEET_NAME = "Bluesky"
+SHEET_NAME = "Bluesky"  # name of the google sheet to be updated
+
+# configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
 
 
 def authenticate_google_api():
     # Authenticate with Google Sheets
-    print("Authenticating with Google Sheets API...")
+    logging.info("Authenticating with Google Sheets API...")
 
     scopes = ["https://www.googleapis.com/auth/spreadsheets",
               "https://www.googleapis.com/auth/drive"]
@@ -36,7 +43,7 @@ def authenticate_google_api():
 
     client = gspread.authorize(creds)
 
-    print("Authentication successful!")
+    logging.info("Authentication successful!")
     return client
 
 
@@ -53,7 +60,7 @@ def scroll_to_load_posts(driver):
                     "return document.body.scrollHeight") > last_height
             )
         except TimeoutException:
-            break  # No more content is loading
+            break  # No more content is loading, move to the next step
 
         last_height = driver.execute_script(
             "return document.body.scrollHeight")
@@ -77,36 +84,39 @@ def append_to_google_sheet(data, sheet_name):
         client = authenticate_google_api()
 
         # Open the Google Sheet
-        print(f"Attempting to access Google Sheet: {sheet_name}")
+        logging.info(f"Attempting to access Google Sheet: {sheet_name}")
         sheet = client.open(sheet_name).sheet1
-        print(f"Successfully accessed Google Sheet: {sheet_name}")
+        logging.info(f"Successfully accessed Google Sheet: {sheet_name}")
 
         # Get existing data to avoid duplicates
-        print("Checking for existing data...")
+        logging.info("Checking for existing data...")
         # Retrieve all rows as a list of dictionaries
         existing_records = sheet.get_all_records()
         # Extract existing Post URLs
         existing_urls = {record["Post URL"] for record in existing_records}
 
         # Filter out duplicate posts
-        print("Filtering out duplicate posts...")
+        logging.info("Filtering out duplicate posts...")
         new_data = data[~data["Post URL"].isin(
             existing_urls)]  # Keep only new rows
         if new_data.empty:
-            print("No new posts to append. All posts are already in the sheet.")
+            logging.info(
+                "No new posts to append. All posts are already in the sheet.")
             return
 
         # Append new rows in bulk
-        print(f"Appending {len(new_data)} new rows to the Google Sheet...")
+        logging.info(
+            f"Appending {len(new_data)} new rows to the Google Sheet...")
         rows = new_data.values.tolist()  # Convert DataFrame to list of lists
         sheet.append_rows(rows)
-        print("Data appended successfully!")
+        logging.info("Data appended successfully!")
     except gspread.SpreadsheetNotFound:
-        print("The specified Google Sheet was not found. Check the sheet name or ID.")
+        logging.exception(
+            "The specified Google Sheet was not found. Check the sheet name or ID.")
     except gspread.exceptions.APIError as api_error:
-        print("API Error occurred:", api_error.response.text)
+        logging.exception("API Error occurred:", api_error.response.text)
     except Exception as e:
-        print("An unexpected error occurred:", e)
+        logging.exception("An unexpected error occurred:", e)
 
 
 def get_driver():
@@ -189,7 +199,7 @@ driver = get_driver()
 
 try:
     # Step 1: Open the public Bluesky page
-    print("Opening Bluesky page...")
+    logging.info("Opening Bluesky page...")
     driver.get("https://bsky.app/profile/london.gov.uk")
 
     try:
@@ -199,33 +209,33 @@ try:
             EC.presence_of_element_located(
                 (By.CSS_SELECTOR, "div[data-testid='postsFeed-flatlist']"))
         )
-        print("Feed loaded successfully!")
+        logging.info("Feed loaded successfully!")
     except TimeoutException:
-        print("Timed out waiting for the post feed to load.")
+        logging.exception("Timed out waiting for the post feed to load.")
 
     # Step 2: Scroll to load all posts
-    print("Scrolling to load posts...")
+    logging.info("Scrolling to load posts...")
     scroll_to_load_posts(driver)
 
     # Step 3: Locate the parent container
-    print("Locating the parent container...")
+    logging.info("Locating the parent container...")
     parent_container = driver.find_element(
         By.CSS_SELECTOR, "div[data-testid='postsFeed-flatlist']")
 
     # Step 4: Identify post containers within the parent
-    print("Identifying post containers...")
+    logging.info("Identifying post containers...")
     post_containers = parent_container.find_elements(
         By.XPATH, ".//div[@data-testid='feedItem-by-london.gov.uk']")
 
     # Step 5: Scrape data for each post
-    print("Scraping data from posts...")
+    logging.info("Scraping data from posts...")
     data = []
     for post in post_containers:
 
         data.append(parse_post(post))
 
     # Step 6: Save data to a DataFrame
-    print("Converting scraped data to DataFrame...")
+    logging.info("Converting scraped data to DataFrame...")
     df = pd.DataFrame(data)
     print(df)
 
@@ -233,7 +243,7 @@ try:
     append_to_google_sheet(df, SHEET_NAME)
 
 except Exception as e:
-    print(f"An error occurred during scraping: {e}")
+    logging.exception(f"An error occurred during scraping: {e}")
 
 finally:
     driver.quit()
