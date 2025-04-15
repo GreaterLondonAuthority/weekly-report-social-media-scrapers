@@ -93,9 +93,8 @@ def append_to_google_sheet(data, sheet_name):
 
 
 # Initialize WebDriver
-# Update with your ChromeDriver path
 options = Options()
-# options.add_argument("--headless")  # Optional: Run headless
+options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 
