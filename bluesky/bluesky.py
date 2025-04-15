@@ -1,5 +1,4 @@
-
-
+import os
 import json
 import time
 from datetime import datetime
@@ -49,12 +48,13 @@ def append_to_google_sheet(data, sheet_name):
         # Authenticate with Google Sheets
         print("Authenticating with Google Sheets API...")
 
-        # creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
-
         scopes = ["https://www.googleapis.com/auth/spreadsheets",
                   "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_file(
-            'credentials.json', scopes=scopes)
+        creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
+        creds = Credentials.from_service_account_info(
+            creds_dict, scopes=scopes)
+        # creds = Credentials.from_service_account_file(
+        #     'credentials.json', scopes=scopes)
         client = gspread.authorize(creds)
 
         print("Authentication successful!")
