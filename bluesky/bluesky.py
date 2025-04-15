@@ -12,6 +12,28 @@ from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 
+# access google service account credentials saved in the environment
+GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
+
+
+def authenticate_google_api():
+    # Authenticate with Google Sheets
+    print("Authenticating with Google Sheets API...")
+
+    scopes = ["https://www.googleapis.com/auth/spreadsheets",
+              "https://www.googleapis.com/auth/drive"]
+
+    creds_dict = json.loads(GOOGLE_CREDENTIALS)
+    creds = Credentials.from_service_account_info(
+        creds_dict, scopes=scopes)
+
+    # creds = Credentials.from_service_account_file(
+    #     'credentials.json', scopes=scopes)
+
+    client = gspread.authorize(creds)
+
+    print("Authentication successful!")
+    return client
 
 # Scroll to load more posts
 
@@ -45,19 +67,7 @@ def reformat_publish_time(publish_time):
 
 def append_to_google_sheet(data, sheet_name):
     try:
-        # Authenticate with Google Sheets
-        print("Authenticating with Google Sheets API...")
-
-        scopes = ["https://www.googleapis.com/auth/spreadsheets",
-                  "https://www.googleapis.com/auth/drive"]
-        creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
-        creds = Credentials.from_service_account_info(
-            creds_dict, scopes=scopes)
-        # creds = Credentials.from_service_account_file(
-        #     'credentials.json', scopes=scopes)
-        client = gspread.authorize(creds)
-
-        print("Authentication successful!")
+        client = authenticate_google_api()
 
         # Open the Google Sheet
         print(f"Attempting to access Google Sheet: {sheet_name}")
