@@ -5,6 +5,7 @@ import logging
 
 import pandas as pd
 import gspread
+from tqdm import tqdm
 from google.oauth2.service_account import Credentials
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -17,7 +18,7 @@ from selenium.common.exceptions import TimeoutException
 
 
 # access google service account credentials saved in the environment
-GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
+# GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
 SHEET_NAME = "Bluesky"  # name of the google sheet to be updated
 
 # configure logging
@@ -34,12 +35,12 @@ def authenticate_google_api():
     scopes = ["https://www.googleapis.com/auth/spreadsheets",
               "https://www.googleapis.com/auth/drive"]
 
-    creds_dict = json.loads(GOOGLE_CREDENTIALS)
-    creds = Credentials.from_service_account_info(
-        creds_dict, scopes=scopes)
+    # creds_dict = json.loads(GOOGLE_CREDENTIALS)
+    # creds = Credentials.from_service_account_info(
+    #     creds_dict, scopes=scopes)
 
-    # creds = Credentials.from_service_account_file(
-    #     'credentials.json', scopes=scopes)
+    creds = Credentials.from_service_account_file(
+        'credentials.json', scopes=scopes)
 
     client = gspread.authorize(creds)
 
@@ -230,7 +231,7 @@ try:
     # Step 5: Scrape data for each post
     logging.info("Scraping data from posts...")
     data = []
-    for post in post_containers:
+    for post in tqdm(post_containers):
 
         data.append(parse_post(post))
 
