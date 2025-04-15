@@ -13,7 +13,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 
 # access google service account credentials saved in the environment
-GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
+# GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
 
 
 def authenticate_google_api():
@@ -35,10 +35,9 @@ def authenticate_google_api():
     print("Authentication successful!")
     return client
 
-# Scroll to load more posts
-
 
 def scroll_to_load_posts(driver):
+    # Scroll to load more posts
     last_height = driver.execute_script("return document.body.scrollHeight")
     while True:
         driver.execute_script(
@@ -49,10 +48,9 @@ def scroll_to_load_posts(driver):
             break  # Stop if no new posts are loaded
         last_height = new_height
 
-# Function to reformat the publish time
-
 
 def reformat_publish_time(publish_time):
+    # Reformat the publish time to a desired format
     try:
         # Parse the original format
         parsed_time = datetime.strptime(publish_time, "%B %d, %Y at %I:%M %p")
@@ -62,10 +60,9 @@ def reformat_publish_time(publish_time):
         # Return the original value if parsing fails
         return publish_time
 
-# Function to append data to Google Sheet in bulk with deduplication
-
 
 def append_to_google_sheet(data, sheet_name):
+    # Append data to Google Sheet in bulk with deduplication
     try:
         client = authenticate_google_api()
 
@@ -102,19 +99,87 @@ def append_to_google_sheet(data, sheet_name):
         print("An unexpected error occurred:", e)
 
 
-# Initialize WebDriver
-options = Options()
-options.add_argument("--headless")
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-dev-shm-usage")
+def get_driver():
+    # Initialize WebDriver
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    driver = webdriver.Chrome(service=Service(
+        ChromeDriverManager().install()), options=options)
 
-driver = webdriver.Chrome(service=Service(
-    ChromeDriverManager().install()), options=options)
+    return driver
+
+
+def parse_post(post):
+    # Extract post data
+
+    # Extract publish time
+    try:
+        publish_time_element = post.find_element(
+            By.CSS_SELECTOR, "a[aria-label][role='link'][href*='/post/']")
+    except Exception:
+        publish_time = "N/A"
+        post_url = "N/A"
+
+    publish_time = publish_time_element.get_attribute("aria-label")
+    # Reformat the publish time
+    publish_time = reformat_publish_time(
+        publish_time)
+    # Get the post URL
+    post_url = publish_time_element.get_attribute(
+        "href")
+
+    try:
+        post_text = post.find_element(
+            By.CSS_SELECTOR, "div[data-testid='postText']").text
+    except Exception:
+        post_text = "N/A"
+
+    try:
+        comment_button = post.find_element(
+            By.CSS_SELECTOR, "button[data-testid='replyBtn']")
+        comment_count = comment_button.get_attribute("aria-label")
+        comment_count = int(''.join(filter(str.isdigit, comment_count)))
+
+    except Exception:
+        comment_count = 0
+
+    try:
+        repost_button = post.find_element(
+            By.CSS_SELECTOR, "button[aria-label='Repost or quote post']")
+        repost_count_element = repost_button.find_element(
+            By.CSS_SELECTOR, "div[data-testid='repostCount']")
+        repost_count = int(repost_count_element.text)
+    except Exception:
+        repost_count = 0
+
+    try:
+        like_button = post.find_element(
+            By.CSS_SELECTOR, "button[data-testid='likeBtn']")
+        like_count_element = like_button.find_element(
+            By.CSS_SELECTOR, "div[data-testid='likeCount']")
+        like_count = int(like_count_element.text)
+    except Exception:
+        like_count = 0
+
+    return {
+        "Publish Time": publish_time,
+        "Post URL": post_url,
+        "Post Text": post_text,
+        "Comments": comment_count,
+        "Reposts": repost_count,
+        "Likes": like_count
+    }
+
+# Automation Script Logic
+
+
+driver = get_driver()
 
 try:
     # Step 1: Open the public Bluesky page
     print("Opening Bluesky page...")
-    # Replace with the public page URL
     driver.get("https://bsky.app/profile/london.gov.uk")
     time.sleep(3)  # Allow time for the page to load
 
@@ -136,59 +201,8 @@ try:
     print("Scraping data from posts...")
     data = []
     for post in post_containers:
-        try:
-            # Extract and reformat publish time
-            publish_time_element = post.find_element(
-                By.CSS_SELECTOR, "a[aria-label][role='link'][href*='/post/']")
-            publish_time = publish_time_element.get_attribute("aria-label")
-            publish_time = reformat_publish_time(
-                publish_time)  # Reformat the publish time
-            post_url = publish_time_element.get_attribute(
-                "href")  # Get the post URL
-        except Exception:
-            publish_time = "N/A"
-            post_url = "N/A"
 
-        try:
-            post_text = post.find_element(
-                By.CSS_SELECTOR, "div[data-testid='postText']").text
-        except Exception:
-            post_text = "N/A"
-
-        try:
-            comment_button = post.find_element(
-                By.CSS_SELECTOR, "button[data-testid='replyBtn']")
-            comment_count = comment_button.get_attribute("aria-label")
-            comment_count = int(''.join(filter(str.isdigit, comment_count)))
-        except Exception:
-            comment_count = 0
-
-        try:
-            repost_button = post.find_element(
-                By.CSS_SELECTOR, "button[aria-label='Repost or quote post']")
-            repost_count_element = repost_button.find_element(
-                By.CSS_SELECTOR, "div[data-testid='repostCount']")
-            repost_count = int(repost_count_element.text)
-        except Exception:
-            repost_count = 0
-
-        try:
-            like_button = post.find_element(
-                By.CSS_SELECTOR, "button[data-testid='likeBtn']")
-            like_count_element = like_button.find_element(
-                By.CSS_SELECTOR, "div[data-testid='likeCount']")
-            like_count = int(like_count_element.text)
-        except Exception:
-            like_count = 0
-
-        data.append({
-            "Publish Time": publish_time,
-            "Post URL": post_url,
-            "Post Text": post_text,
-            "Comments": comment_count,
-            "Reposts": repost_count,
-            "Likes": like_count
-        })
+        data.append(parse_post(post))
 
     # Step 6: Save data to a DataFrame
     print("Converting scraped data to DataFrame...")
