@@ -15,7 +15,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
 # access google service account credentials saved in the environment
-# GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
+GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
 
 
 def authenticate_google_api():
