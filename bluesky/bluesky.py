@@ -16,6 +16,8 @@ from selenium.common.exceptions import TimeoutException
 
 # access google service account credentials saved in the environment
 GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
+# name of the google sheet to be updated
+SHEET_NAME = "Bluesky"
 
 
 def authenticate_google_api():
@@ -228,9 +230,7 @@ try:
     print(df)
 
     # Step 7: Save to Google Sheets
-    # Update with your JSON key path
-    sheet_name = "Bluesky"  # Replace with your Google Sheet name
-    append_to_google_sheet(df, sheet_name)
+    append_to_google_sheet(df, SHEET_NAME)
 
 except Exception as e:
     print(f"An error occurred during scraping: {e}")
