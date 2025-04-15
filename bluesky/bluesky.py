@@ -17,8 +17,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
 
-# access google service account credentials saved in the environment
-# GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
+# access google service account credentials saved in the environment (comment out to run locally!)
+GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
 SHEET_NAME = "Bluesky"  # name of the google sheet to be updated
 
 # configure logging
@@ -35,12 +35,14 @@ def authenticate_google_api():
     scopes = ["https://www.googleapis.com/auth/spreadsheets",
               "https://www.googleapis.com/auth/drive"]
 
-    # creds_dict = json.loads(GOOGLE_CREDENTIALS)
-    # creds = Credentials.from_service_account_info(
-    #     creds_dict, scopes=scopes)
+    # Authenticate via environment credentials (comment out to run locally)
+    creds_dict = json.loads(GOOGLE_CREDENTIALS)
+    creds = Credentials.from_service_account_info(
+        creds_dict, scopes=scopes)
 
-    creds = Credentials.from_service_account_file(
-        'credentials.json', scopes=scopes)
+    # Uncomment this to run locally from credentials json file
+    # creds = Credentials.from_service_account_file(
+    #     'credentials.json', scopes=scopes)
 
     client = gspread.authorize(creds)
 
