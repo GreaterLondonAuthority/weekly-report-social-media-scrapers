@@ -62,7 +62,7 @@ pip install -r requirements.txt
 
 ### 4. Add google API credentials:
 
-save the service account key file as 'credentials.json' in the root directory
+Save the service account key file as 'credentials.json' in the root directory
 
 ### 5. Modify the lines to run locally:
 
