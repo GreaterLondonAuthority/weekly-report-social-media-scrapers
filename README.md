@@ -1,6 +1,6 @@
 # Weekly Report Social Media Scrapers
 
-This repository holds automation scripts to scrape GLA data from social media platforms for performance analysis purposes. Data is appended to Google Sheets.
+This repository holds automation scripts to scrape GLA data from social media platforms for performance analysis purposes. Data is appended to Google Sheets integrated with [Looker Studio](https://lookerstudio.google.com/u/0/reporting/795e52c4-4cd5-49c7-96f0-c1e02f55c979).
 
 ## Social Media Platforms
 
@@ -98,5 +98,5 @@ python3 [selected_script_directory]/[selected_script.py]
 example:
 
 ```bash
-python3 [bluesky]/[bluesky.py]
+python3 bluesky/bluesky.py
 ```
