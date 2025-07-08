@@ -18,8 +18,9 @@ from selenium.common.exceptions import TimeoutException
 
 
 # access google service account credentials saved in the environment (comment out to run locally!)
-GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
-SHEET_NAME = "Bluesky"  # name of the google sheet to be updated
+# GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
+SHEET_NAME = "Social report tracker"  # name of the google sheet to be updated
+WORKSHEET_NAME = "Bluesky"
 PROFILE_URL = "https://bsky.app/profile/london.gov.uk" # bluesky profile url to be scraped
 
 # configure logging
@@ -61,19 +62,23 @@ def get_driver():
 
     return driver
 
-def check_sheet_access(sheet_name):
+def check_sheet_access(sheet_name, worksheet_name):
     # Check if the Google Sheet is accessible before scraping
     try:
         client = authenticate_google_api()
         
         # Test opening the Google Sheet
         logging.info(f"Checking access to Google Sheet: {sheet_name}")
-        sheet = client.open(sheet_name).sheet1
+        sheet = client.open(sheet_name)
+        worksheet = sheet.worksheet(worksheet_name)
         logging.info(f"Successfully verified access to Google Sheet: {sheet_name}")
         return True
         
     except gspread.SpreadsheetNotFound:
         logging.error(f"Google Sheet '{sheet_name}' was not found. Please check the sheet name.")
+        return False
+    except gspread.WorksheetNotFound:
+        logging.error(f"Worksheet '{worksheet_name}' in Google Sheet '{sheet_name}' was not found. Please check the worksheet name.")
         return False
     except gspread.exceptions.APIError as api_error:
         logging.error(f"API Error when accessing Google Sheet: {api_error.response.text}")
@@ -120,13 +125,14 @@ def append_to_google_sheet(data, sheet_name):
 
         # Open the Google Sheet
         logging.info(f"Attempting to access Google Sheet: {sheet_name}")
-        sheet = client.open(sheet_name).sheet1
+        sheet = client.open(sheet_name)
+        worksheet = sheet.worksheet(WORKSHEET_NAME)
         logging.info(f"Successfully accessed Google Sheet: {sheet_name}")
 
         # Get existing data to avoid duplicates
         logging.info("Checking for existing data...")
         # Retrieve all rows as a list of dictionaries
-        existing_records = sheet.get_all_records()
+        existing_records = worksheet.get_all_records()
         # Extract existing Post URLs
         existing_urls = {record["Post URL"] for record in existing_records}
 
@@ -146,7 +152,7 @@ def append_to_google_sheet(data, sheet_name):
         logging.info(
             f"Appending {new_rows_count} new rows to the Google Sheet...")
         rows = new_data.values.tolist()  # Convert DataFrame to list of lists
-        sheet.append_rows(rows)
+        worksheet.append_rows(rows)
         logging.info("Data appended successfully!")
         return new_rows_count
 
@@ -225,7 +231,7 @@ def main():
     '''Automation Script Logic'''
 
     # Check Google Sheet access before starting scraping
-    if not check_sheet_access(SHEET_NAME):
+    if not check_sheet_access(SHEET_NAME, WORKSHEET_NAME):
         logging.error("Cannot access Google Sheet. Exiting script.")
         return
 
