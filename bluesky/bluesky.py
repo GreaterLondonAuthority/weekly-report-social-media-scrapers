@@ -18,7 +18,7 @@ from selenium.common.exceptions import TimeoutException
 
 
 # access google service account credentials saved in the environment (comment out to run locally!)
-GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
+# GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
 SHEET_NAME = "Bluesky"  # name of the google sheet to be updated
 PROFILE_URL = "https://bsky.app/profile/london.gov.uk" # bluesky profile url to be scraped
 
@@ -30,20 +30,20 @@ logging.basicConfig(
 
 
 def authenticate_google_api():
-    # Authenticate with Google Sheets
+    # Authenticate with Google Sheets    
     logging.info("Authenticating with Google Sheets API...")
 
     scopes = ["https://www.googleapis.com/auth/spreadsheets",
               "https://www.googleapis.com/auth/drive"]
 
     # Authenticate via environment credentials (comment out to run locally)
-    creds_dict = json.loads(GOOGLE_CREDENTIALS)
-    creds = Credentials.from_service_account_info(
-        creds_dict, scopes=scopes)
+    # creds_dict = json.loads(GOOGLE_CREDENTIALS)
+    # creds = Credentials.from_service_account_info(
+    #     creds_dict, scopes=scopes)
 
     # Uncomment this to run locally from credentials json file
-    # creds = Credentials.from_service_account_file(
-    #     'credentials.json', scopes=scopes)
+    creds = Credentials.from_service_account_file(
+        'credentials.json', scopes=scopes)
 
     client = gspread.authorize(creds)
 
@@ -60,7 +60,27 @@ def get_driver():
         ChromeDriverManager().install()), options=options)
 
     return driver
-    
+
+def check_sheet_access(sheet_name):
+    # Check if the Google Sheet is accessible before scraping
+    try:
+        client = authenticate_google_api()
+        
+        # Test opening the Google Sheet
+        logging.info(f"Checking access to Google Sheet: {sheet_name}")
+        sheet = client.open(sheet_name).sheet1
+        logging.info(f"Successfully verified access to Google Sheet: {sheet_name}")
+        return True
+        
+    except gspread.SpreadsheetNotFound:
+        logging.error(f"Google Sheet '{sheet_name}' was not found. Please check the sheet name.")
+        return False
+    except gspread.exceptions.APIError as api_error:
+        logging.error(f"API Error when accessing Google Sheet: {api_error.response.text}")
+        return False
+    except Exception as e:
+        logging.error(f"Unexpected error when checking sheet access: {e}")
+        return False    
 
 def scroll_to_load_posts(driver):
     wait = WebDriverWait(driver, 5)
@@ -200,10 +220,14 @@ def parse_post(post):
         "Likes": like_count
     }
 
-# Automation Script Logic
 
 def main():
     '''Automation Script Logic'''
+
+    # Check Google Sheet access before starting scraping
+    if not check_sheet_access(SHEET_NAME):
+        logging.error("Cannot access Google Sheet. Exiting script.")
+        return
 
     driver = get_driver()
 
