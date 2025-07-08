@@ -60,6 +60,7 @@ def get_driver():
         ChromeDriverManager().install()), options=options)
 
     return driver
+    
 
 def scroll_to_load_posts(driver):
     wait = WebDriverWait(driver, 5)
@@ -113,6 +114,9 @@ def append_to_google_sheet(data, sheet_name):
         logging.info("Filtering out duplicate posts...")
         new_data = data[~data["Post URL"].isin(
             existing_urls)]  # Keep only new rows
+        
+        new_rows_count = len(new_data)
+
         if new_data.empty:
             logging.info(
                 "No new posts to append. All posts are already in the sheet.")
@@ -120,10 +124,12 @@ def append_to_google_sheet(data, sheet_name):
 
         # Append new rows in bulk
         logging.info(
-            f"Appending {len(new_data)} new rows to the Google Sheet...")
+            f"Appending {new_rows_count} new rows to the Google Sheet...")
         rows = new_data.values.tolist()  # Convert DataFrame to list of lists
         sheet.append_rows(rows)
         logging.info("Data appended successfully!")
+        return new_rows_count
+
     except gspread.SpreadsheetNotFound:
         logging.exception(
             "The specified Google Sheet was not found. Check the sheet name or ID.")
@@ -196,56 +202,71 @@ def parse_post(post):
 
 # Automation Script Logic
 
+def main():
+    '''Automation Script Logic'''
 
-driver = get_driver()
+    driver = get_driver()
 
-try:
-    # Step 1: Open the public Bluesky page
-    logging.info("Opening Bluesky page...")
-    driver.get(PROFILE_URL)
+    logging.info("Starting Bluesky scraper...")
+    logging.info(f"Target profile: {PROFILE_URL}")
+    logging.info(f"Target sheet: {SHEET_NAME}")
 
     try:
-        # Wait until the feed is present
-        wait = WebDriverWait(driver, 10)
-        wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "div[data-testid='postsFeed-flatlist']"))
-        )
-        logging.info("Feed loaded successfully!")
-    except TimeoutException:
-        logging.exception("Timed out waiting for the post feed to load.")
+        # Step 1: Open the public Bluesky page
+        logging.info("Opening Bluesky page...")
+        driver.get(PROFILE_URL)
 
-    # Step 2: Scroll to load all posts
-    logging.info("Scrolling to load posts...")
-    scroll_to_load_posts(driver)
+        try:
+            # Wait until the feed is present
+            wait = WebDriverWait(driver, 10)
+            wait.until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "div[data-testid='postsFeed-flatlist']"))
+            )
+            logging.info("Feed loaded successfully!")
+        except TimeoutException:
+            logging.exception("Timed out waiting for the post feed to load.")
 
-    # Step 3: Locate the parent container
-    logging.info("Locating the parent container...")
-    parent_container = driver.find_element(
-        By.CSS_SELECTOR, "div[data-testid='postsFeed-flatlist']")
+        # Step 2: Scroll to load all posts
+        logging.info("Scrolling to load posts...")
+        scroll_to_load_posts(driver)
 
-    # Step 4: Identify post containers within the parent
-    logging.info("Identifying post containers...")
-    post_containers = parent_container.find_elements(
-        By.XPATH, ".//div[@data-testid='feedItem-by-london.gov.uk']")
+        # Step 3: Locate the parent container
+        logging.info("Locating the parent container...")
+        parent_container = driver.find_element(
+            By.CSS_SELECTOR, "div[data-testid='postsFeed-flatlist']")
 
-    # Step 5: Scrape data for each post
-    logging.info("Scraping data from posts...")
-    data = []
-    for post in tqdm(post_containers):
+        # Step 4: Identify post containers within the parent
+        logging.info("Identifying post containers...")
+        post_containers = parent_container.find_elements(
+            By.XPATH, ".//div[@data-testid='feedItem-by-london.gov.uk']")
 
-        data.append(parse_post(post))
+        # Step 5: Scrape data for each post
+        logging.info("Scraping data from posts...")
+        data = []
+        for post in tqdm(post_containers):
 
-    # Step 6: Save data to a DataFrame
-    logging.info("Converting scraped data to DataFrame...")
-    df = pd.DataFrame(data)
-    print(df)
+            data.append(parse_post(post))
 
-    # Step 7: Save to Google Sheets
-    append_to_google_sheet(df, SHEET_NAME)
+        # Step 6: Save data to a DataFrame
+        logging.info("Converting scraped data to DataFrame...")
+        df = pd.DataFrame(data)
+        print(df)
 
-except Exception as e:
-    logging.exception(f"An error occurred during scraping: {e}")
+        # Step 7: Save to Google Sheets
+        new_rows_added = append_to_google_sheet(df, SHEET_NAME)
 
-finally:
-    driver.quit()
+        # Display summary
+        logging.info("Scraped data summary:")
+        logging.info(f"Total posts scraped: {len(df)}")
+        logging.info(f"Date range: {df['Publish Time'].min()} to {df['Publish Time'].max()}")
+        logging.info(f"New posts added to sheet: {new_rows_added}")
+
+    except Exception as e:
+        logging.exception(f"An error occurred during scraping: {e}")
+
+    finally:
+        driver.quit()
+
+if __name__ == "__main__":
+    main()
