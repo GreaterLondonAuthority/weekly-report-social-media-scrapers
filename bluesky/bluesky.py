@@ -18,7 +18,7 @@ from selenium.common.exceptions import TimeoutException
 
 
 # access google service account credentials saved in the environment (comment out to run locally!)
-# GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
+GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
 SHEET_NAME = "Social report tracker"  # name of the google sheet to be updated
 WORKSHEET_NAME = "Bluesky"
 PROFILE_URL = "https://bsky.app/profile/london.gov.uk" # bluesky profile url to be scraped
