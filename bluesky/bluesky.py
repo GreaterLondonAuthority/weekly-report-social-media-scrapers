@@ -20,6 +20,7 @@ from selenium.common.exceptions import TimeoutException
 # access google service account credentials saved in the environment (comment out to run locally!)
 GOOGLE_CREDENTIALS = os.environ["GOOGLE_CREDENTIALS"]
 SHEET_NAME = "Bluesky"  # name of the google sheet to be updated
+PROFILE_URL = "https://bsky.app/profile/london.gov.uk" # bluesky profile url to be scraped
 
 # configure logging
 logging.basicConfig(
@@ -49,6 +50,16 @@ def authenticate_google_api():
     logging.info("Authentication successful!")
     return client
 
+def get_driver():
+    # Initialize WebDriver
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    driver = webdriver.Chrome(service=Service(
+        ChromeDriverManager().install()), options=options)
+
+    return driver
 
 def scroll_to_load_posts(driver):
     wait = WebDriverWait(driver, 5)
@@ -122,18 +133,6 @@ def append_to_google_sheet(data, sheet_name):
         logging.exception("An unexpected error occurred:", e)
 
 
-def get_driver():
-    # Initialize WebDriver
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    driver = webdriver.Chrome(service=Service(
-        ChromeDriverManager().install()), options=options)
-
-    return driver
-
-
 def parse_post(post):
     # Extract post data
 
@@ -203,7 +202,7 @@ driver = get_driver()
 try:
     # Step 1: Open the public Bluesky page
     logging.info("Opening Bluesky page...")
-    driver.get("https://bsky.app/profile/london.gov.uk")
+    driver.get(PROFILE_URL)
 
     try:
         # Wait until the feed is present
